@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.JwtException;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -41,33 +42,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = authorizationHeader.substring(7);
-
-        if (jwtService.isTokenValid(token) &&
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication() == null) {
+        try {
+            String token =
+                    authorizationHeader.substring(7);
 
             String username =
                     jwtService.extractUsername(token);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            username,
-                            null,
-                            Collections.emptyList()
-                    );
+            if (username != null &&
+                    SecurityContextHolder
+                            .getContext()
+                            .getAuthentication() == null) {
 
-            authentication.setDetails(
-                    new WebAuthenticationDetailsSource()
-                            .buildDetails(request)
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                username,
+                                null,
+                                Collections.emptyList()
+                        );
+
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(request)
+                );
+
+                SecurityContextHolder
+                        .getContext()
+                        .setAuthentication(authentication);
+            }
+
+        } catch (JwtException | IllegalArgumentException exception) {
+
+            SecurityContextHolder.clearContext();
+
+            response.setStatus(
+                    HttpServletResponse.SC_UNAUTHORIZED
             );
 
-            SecurityContext context =
-                    SecurityContextHolder.createEmptyContext();
+            response.setContentType(
+                    "application/json"
+            );
 
-            context.setAuthentication(authentication);
-            SecurityContextHolder.setContext(context);
+            response.setCharacterEncoding(
+                    "UTF-8"
+            );
+
+            response.getWriter().write(
+                    "{\"message\":\"Oturum süresi dolmuş veya token geçersiz.\"}"
+            );
+
+            return;
         }
 
         filterChain.doFilter(request, response);
