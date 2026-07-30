@@ -1,9 +1,11 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: import.meta.env.PROD
-        ? "https://todo-app-backend-7pv4.onrender.com/api"
-        : "http://localhost:8080/api",
+    baseURL:
+        import.meta.env.VITE_API_URL ??
+        (import.meta.env.PROD
+            ? "https://todo-app-backend-7pv4.onrender.com/api"
+            : "http://localhost:8080/api"),
 
     headers: {
         "Content-Type": "application/json",
@@ -28,6 +30,7 @@ api.interceptors.response.use(
     (error) => {
         const status = error.response?.status;
         const token = localStorage.getItem("token");
+
         const requestUrl: string =
             error.config?.url ?? "";
 
@@ -47,7 +50,6 @@ api.interceptors.response.use(
             redirectingToLogin = true;
 
             localStorage.removeItem("token");
-
             window.location.replace("/login");
         }
 
